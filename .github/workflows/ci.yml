@@ -87,6 +87,9 @@ jobs:
         fetch-depth: 0
     - name: Run Static Code Analysis (SonarQube)
       uses: ./.github/actions/static-code-analysis-sonarqube
+      with:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
   quality-gate:
     runs-on: ubuntu-latest
     needs: static-code-analysis-sonarqube
