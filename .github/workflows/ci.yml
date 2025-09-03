@@ -38,10 +38,7 @@ name: CI Pipeline
         - stg
         - prd
 env:
-  REGISTRY: ghcr.io/your-org
-  IMAGE: ${env.REGISTRY}/${params.APP_NAME}
   SONARQUBE_SERVER: sonarqube-prod
-  REGISTRY_CRED: credentials('registry-writer')
   SLACK_CRED: credentials('slack-webhook')
   KUBE_CONFIG_DEV: credentials('kubeconfig-dev')
   KUBE_CONFIG_PRD: credentials('kubeconfig-prd')
