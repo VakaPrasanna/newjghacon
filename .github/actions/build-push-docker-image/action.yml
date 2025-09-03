@@ -1,28 +1,35 @@
-name: Build & Push Docker Image Action
-description: Enhanced composite action for Build & Push Docker Image stage with comprehensive Jenkins feature support
+name: Build & Push Docker Image
+description: Composite action for building and pushing Docker images
+
 inputs:
   docker-username:
-    description: "DockerHub Username"
+    description: "Docker Registry Username"
     required: true
   docker-password:
-    description: "DockerHub Password"
+    description: "Docker Registry Password"
     required: true
-  image:
-    description: "Full image name (registry/repo:tag)"
+  registry:
+    description: "Docker Registry (e.g., docker.io or gher.io/your-org)"
     required: true
+  app-name:
+    description: "Application name"
+    required: true
+  tag:
+    description: "Docker image tag"
+    required: true
+
 runs:
   using: composite
   steps:
-    - name: Log in to Docker
-      run: echo "${{ inputs.docker-password }}" | docker login -u "${{ inputs.docker-username }}" --password-stdin
+    - name: Log in to Docker registry
+      run: echo "${{ inputs.docker-password }}" | docker login "${{ inputs.registry }}" -u "${{ inputs.docker-username }}" --password-stdin
       shell: bash
 
     - name: Build Docker image
-      run: docker build -t ${{ inputs.image }} .
+      run: docker build -t ${{ inputs.registry }}/${{ inputs.app-name }}:${{ inputs.tag }} .
       shell: bash
 
     - name: Push Docker image
-      run: docker push ${{ inputs.image }}
+      run: docker push ${{ inputs.registry }}/${{ inputs.app-name }}:${{ inputs.tag }}
       shell: bash
-
 
