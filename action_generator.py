@@ -157,10 +157,10 @@ def convert_sonarqube_steps(sonar_steps: List[Dict[str, Any]]) -> List[Dict[str,
         action = {
             "name": "SonarQube Scan",
             "uses": "sonarqube-scan-action@master",
-            "env": {
-                "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
-                "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
-            }
+            # "env": {
+            #     "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
+            #     "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
+            # }
         }
         
         # Extract sonar properties from commands
@@ -187,10 +187,10 @@ def convert_sonarqube_steps(sonar_steps: List[Dict[str, Any]]) -> List[Dict[str,
                 "name": "Run SonarQube analysis",
                 "run": cmd,
                 "shell": "bash",
-                "env": {
-                    "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
-                    "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
-                }
+                # "env": {
+                #     "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
+                #     "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
+                # }
             })
     
     return sonar_actions
