@@ -13,9 +13,18 @@ inputs:
 runs:
   using: composite
   steps:
-  - name: SonarQube Scan
-    uses: SonarSource/sonarqube-scan-action@master
-  - name: Run SonarQube analysis
-    run: mvn sonar:sonar  -Dsonar.projectKey=${{ inputs.sonar-project-key }}  -Dsonar.host.url=${{ inputs.sonar-host-url }} -Dsonar.login=${{ inputs.sonar-token }} 
-    shell: bash
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
+      with:
+        args: >
+          -Dsonar.projectKey=${{ inputs.sonar-project-key }}
+          -Dsonar.host.url=${{ inputs.sonar-host-url }}
+          -Dsonar.login=${{ inputs.sonar-token }}
+
+    - name: Run SonarQube analysis via Maven
+      run: mvn sonar:sonar \
+        -Dsonar.projectKey=${{ inputs.sonar-project-key }} \
+        -Dsonar.host.url=${{ inputs.sonar-host-url }} \
+        -Dsonar.login=${{ inputs.sonar-token }}
+      shell: bash
     
