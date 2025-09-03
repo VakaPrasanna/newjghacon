@@ -120,7 +120,9 @@ jobs:
       with:
         docker-username: ${{ secrets.DOCKER_USERNAME }}
         docker-password: ${{ secrets.DOCKER_PASSWORD }}
-        image: my-docker-org/my-java-app:${{ github.run_number }}
+        registry: gher.io/your-org
+        app-name: my-java-app
+        tag: ${{ github.run_number }}
       timeout-minutes: 30
   manual-approval-for-deploy:
     runs-on: ubuntu-latest
