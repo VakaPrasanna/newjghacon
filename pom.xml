@@ -10,7 +10,7 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <n>My Java App</n>
+    <name>My Java App</name>
     <description>Spring Boot application for Jenkins pipeline</description>
 
     <parent>
