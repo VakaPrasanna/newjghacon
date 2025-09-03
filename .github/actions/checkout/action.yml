@@ -1,0 +1,11 @@
+name: Checkout Action
+description: Enhanced composite action for Checkout stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
+  - name: Script block 1 (REQUIRES MANUAL CONVERSION)
+    run: "\n# MANUAL CONVERSION REQUIRED: Complex script block\n# Original Jenkins feature: env.GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()\n                    env.BUILD_TAG = \"${env.GIT_COMMIT_SHORT}-${env.BUILD_NUMBER}\"\n# Action needed: Review Jenkins documentation and implement equivalent logic\n# TODO: Implement this functionality manually\n"
+    shell: bash

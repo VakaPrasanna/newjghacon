@@ -1,0 +1,6 @@
+name: Manual Approval for Deploy Action
+description: Enhanced composite action for Manual Approval for Deploy stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps: []

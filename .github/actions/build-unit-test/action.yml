@@ -1,0 +1,16 @@
+name: Build & Unit Test Action
+description: Enhanced composite action for Build & Unit Test stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: Run command 1
+    run: mvn clean package -DskipITs=false
+    shell: bash
+  - name: Publish test results (always)
+    if: always()
+    uses: dorny/test-reporter@v1
+    with:
+      name: Build & Unit Test Test Results
+      path: '**/target/surefire-reports/*.xml'
+      reporter: java-junit

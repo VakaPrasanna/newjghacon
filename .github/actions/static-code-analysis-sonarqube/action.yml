@@ -1,0 +1,20 @@
+name: Static Code Analysis (SonarQube) Action
+description: Enhanced composite action for Static Code Analysis (SonarQube) stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: SonarQube Scan
+    uses: sonarqube-scan-action@master
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    with:
+      projectKey: ${params.APP_NAME}
+      projectName: ${params.APP_NAME}
+  - name: Run SonarQube analysis
+    run: mvn sonar:sonar  -Dsonar.projectKey=${params.APP_NAME}  -Dsonar.projectName=${params.APP_NAME}  -Dsonar.projectVersion=${BUILD_TAG}
+    shell: bash
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

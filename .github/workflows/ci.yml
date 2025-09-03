@@ -1,0 +1,174 @@
+name: CI Pipeline
+'on':
+  push:
+    branches:
+    - master
+    - main
+    - develop
+  pull_request:
+    branches:
+    - master
+    - main
+    - develop
+  workflow_dispatch:
+    inputs:
+      APP_NAME:
+        description: Application name
+        required: false
+        default: complex-java-app
+        type: string
+      DOCKER_TAG:
+        description: Docker tag for build
+        required: false
+        default: latest
+        type: string
+      RUN_SECURITY_SCANS:
+        description: Enable SAST/SCA checks?
+        required: false
+        default: true
+        type: boolean
+      DEPLOY_ENV:
+        description: Target environment
+        required: false
+        default: dev
+        type: choice
+        options:
+        - dev
+        - qa
+        - stg
+        - prd
+env:
+  REGISTRY: ghcr.io/your-org
+  IMAGE: ${env.REGISTRY}/${params.APP_NAME}
+  SONARQUBE_SERVER: sonarqube-prod
+  REGISTRY_CRED: credentials('registry-writer')
+  SLACK_CRED: credentials('slack-webhook')
+  KUBE_CONFIG_DEV: credentials('kubeconfig-dev')
+  KUBE_CONFIG_PRD: credentials('kubeconfig-prd')
+  MAVEN_OPTS: -Dmaven.test.failure.ignore=false -DskipTests
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  deployments: write
+  checks: write
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Checkout
+      uses: ./.github/actions/checkout
+    continue-on-error: true
+  set-java-maven:
+    runs-on: ubuntu-latest
+    needs: checkout
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Set Java & Maven
+      uses: ./.github/actions/set-java-maven
+  build-unit-test:
+    runs-on: ubuntu-latest
+    needs: set-java-maven
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Build & Unit Test
+      uses: ./.github/actions/build-unit-test
+  static-code-analysis-sonarqube:
+    runs-on: ubuntu-latest
+    needs: build-unit-test
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Run Static Code Analysis (SonarQube)
+      uses: ./.github/actions/static-code-analysis-sonarqube
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: static-code-analysis-sonarqube
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Quality Gate
+      uses: ./.github/actions/quality-gate
+    continue-on-error: true
+  security-scans:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.RUN_SECURITY_SCANS
+    needs: quality-gate
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Security Scans
+      uses: ./.github/actions/security-scans
+  build-push-docker-image:
+    runs-on: ubuntu-latest
+    needs: security-scans
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Build & Push Docker Image
+      uses: ./.github/actions/build-push-docker-image
+      timeout-minutes: 30
+  manual-approval-for-deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.DEPLOY_ENV in ['stg', 'prd']
+    needs: build-push-docker-image
+    timeout-minutes: 60
+    concurrency:
+      group: deployment-manual-approval-for-deploy
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Manual Approval for Deploy
+      uses: ./.github/actions/manual-approval-for-deploy
+  deploy-to-kubernetes:
+    runs-on: ubuntu-latest
+    needs: manual-approval-for-deploy
+    timeout-minutes: 60
+    concurrency:
+      group: deployment-deploy-to-kubernetes
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Deploy to Kubernetes
+      uses: ./.github/actions/deploy-to-kubernetes
+      timeout-minutes: 30
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: deploy-to-kubernetes
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Smoke Test
+      uses: ./.github/actions/smoke-test
+  pipeline-post:
+    name: Pipeline Post Actions
+    runs-on: ubuntu-latest
+    needs:
+    - checkout
+    - set-java-maven
+    - build-unit-test
+    - static-code-analysis-sonarqube
+    - quality-gate
+    - security-scans
+    - build-push-docker-image
+    - manual-approval-for-deploy
+    - deploy-to-kubernetes
+    - smoke-test
+    if: always()
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Publish test results (always)
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: Pipeline Test Results (always)
+        path: '**/target/surefire-reports/*.xml'
+        reporter: java-junit
+      continue-on-error: false

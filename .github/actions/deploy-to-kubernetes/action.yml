@@ -1,0 +1,27 @@
+name: Deploy to Kubernetes Action
+description: Enhanced composite action for Deploy to Kubernetes stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: Run command 1
+    run: export KUBECONFIG=$KCONFIG
+    shell: bash
+  - name: Run command 2
+    run: kubectl set image deployment/${params.APP_NAME} ${params.APP_NAME}=${IMAGE}:${BUILD_TAG} -n ${params.DEPLOY_ENV}
+    shell: bash
+  - name: Run command 3
+    run: kubectl rollout status deployment/${params.APP_NAME} -n ${params.DEPLOY_ENV} --timeout=5m
+    shell: bash
+  - name: Run Kubernetes command 1
+    run: kubectl set image deployment/${params.APP_NAME} ${params.APP_NAME}=${IMAGE}:${BUILD_TAG} -n ${params.DEPLOY_ENV}
+    shell: bash
+  - name: Run Kubernetes command 2
+    run: kubectl rollout status deployment/${params.APP_NAME} -n ${params.DEPLOY_ENV} --timeout=5m
+    shell: bash
+  - name: Run Kubernetes command 3
+    run: kubectl set image deployment/${params.APP_NAME} ${params.APP_NAME}=${IMAGE}:${BUILD_TAG} -n ${params.DEPLOY_ENV}
+    shell: bash
+  - name: Run Kubernetes command 4
+    run: kubectl rollout status deployment/${params.APP_NAME} -n ${params.DEPLOY_ENV} --timeout=5m
+    shell: bash

@@ -1,0 +1,15 @@
+name: Security Scans Action
+description: Enhanced composite action for Security Scans stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: Run command 1
+    run: echo "Running dependency and container scans..."
+    shell: bash
+  - name: Run command 2
+    run: mvn org.owasp:dependency-check-maven:check -DfailOnError=false || true
+    shell: bash
+  - name: Run command 3
+    run: echo Running dependency and container scans...
+    shell: bash

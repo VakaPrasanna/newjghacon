@@ -1,0 +1,20 @@
+name: Set Java & Maven Action
+description: Enhanced composite action for Set Java & Maven stage with comprehensive Jenkins feature support
+inputs: {}
+runs:
+  using: composite
+  steps:
+  - name: Set up JDK
+    uses: actions/setup-java@v4
+    with:
+      java-version: '17'
+      distribution: temurin
+  - name: Cache Maven packages
+    uses: actions/cache@v4
+    with:
+      path: ~/.m2
+      key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+      restore-keys: ${{ runner.os }}-m2
+  - name: Run command 1
+    run: java -version && mvn -v
+    shell: bash
