@@ -12,19 +12,14 @@ runs:
   steps:
     - name: SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master
-      with:
-        args: >
-          -Dsonar.projectKey=${{ inputs.project-key }}
-          -Dsonar.projectName=${{ inputs.project-name }}
-          -Dsonar.host.url=${{ inputs.sonar-host-url }}
-          -Dsonar.login=${{ inputs.sonar-token }}
+      
 
     - name: Run SonarQube analysis (Maven)
-      run: mvn admin:Adminsonar@12345 \
-        -Dsonar.projectKey=${{ inputs.project-key }} \
-        -Dsonar.projectName=${{ inputs.project-name }} \
-        -Dsonar.host.url=${{ inputs.sonar-host-url }} \
-        -Dsonar.login=${{ inputs.sonar-token }}
+      run: mvn clean verify sonar:sonar \
+        -Dsonar.projectKey=j2github \
+        -Dsonar.projectName='j2github' \
+        -Dsonar.host.url=http://10.138.77.59:9000 \
+        -Dsonar.token=sqp_08b91dcc344b282291cba597f58113d812277649
       shell: bash
   
  
