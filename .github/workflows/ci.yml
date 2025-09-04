@@ -121,7 +121,7 @@ jobs:
         docker-password: ${{ secrets.DOCKER_PASSWORD }}
         registry-cred-username: ${{ secrets.REGISTRY_CRED_USERNAME }}
         registry-cred-password: ${{ secrets.REGISTRY_CRED_PASSWORD }}
-        image-name: vakaprasanna/newjghacon
+        image-name: prasannavaka81/newjghacon
         # ${{ secrets.DOCKER_USERNAME }}
         build-tag: ${{ github.sha }}
         registry: docker.io
