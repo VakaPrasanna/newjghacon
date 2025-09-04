@@ -1,23 +1,11 @@
 name: Checkout Action
 description: Enhanced composite action for Checkout stage with comprehensive Jenkins feature support
 inputs: {}
-outputs:
-  GIT_COMMIT_SHORT:
-    value: ${{ steps.set-vars.outputs.GIT_COMMIT_SHORT }}
-  BUILD_TAG:
-    value: ${{ steps.set-vars.outputs.BUILD_TAG}}
 runs:
   using: composite
   steps:
   - name: Checkout code
     uses: actions/checkout@v4
-  - id: set-vars
-    name: Set Git Commit Short and Build Tag
+  - name: Script block 1 (REQUIRES MANUAL CONVERSION)
+    run: "\n# MANUAL CONVERSION REQUIRED: Complex script block\n# Original Jenkins feature: env.GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()\n                    env.BUILD_TAG = \"${env.GIT_COMMIT_SHORT}-${env.BUILD_NUMBER}\"\n# Action needed: Review Jenkins documentation and implement equivalent logic\n# TODO: Implement this functionality manually\n"
     shell: bash
-    run: |
-      GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
-      BUILD_TAG="${GIT_COMMIT_SHORT}-${GITHUB_RUN_NUMBER}"
-      echo "git_commit_short=$GIT_COMMIT_SHORT" >> $GITHUB_OUTPUT
-      echo "build_tag=$BUILD_TAG" >> $GITHUB_OUTPUT
-
-  

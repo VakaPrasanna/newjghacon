@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenkins to GitHub Actions Conversion Report</title>
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            font-size: 0.9em;
+            flex-wrap: wrap;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .badges {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .badge-blue { background: #3182ce; }
+        .badge-green { background: #38a169; }
+        .badge-yellow { background: #d69e2e; }
+        .badge-red { background: #e53e3e; }
+        .badge-orange { background: #dd6b20; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stat-card.clickable:hover {
+            background: #edf2f7;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        .stat-description {
+            color: #718096;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        .collapsible {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .collapsible-header {
+            background: #e2e8f0;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 7px 7px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .collapsible-header:hover {
+            background: #cbd5e0;
+        }
+
+        .collapsible-content {
+            padding: 20px;
+            display: none;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .collapsible-content.show {
+            display: block;
+        }
+
+        .stage-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .stage-header {
+            background: #f8f9fa;
+            padding: 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stage-header:hover {
+            background: #e9ecef;
+        }
+
+        .stage-content {
+            padding: 20px;
+            display: none;
+            background: #fafbfc;
+        }
+
+        .stage-content.show {
+            display: block;
+        }
+
+        .stage-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stage-tag {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: white;
+        }
+
+        .tag-docker { background: #0066cc; }
+        .tag-k8s { background: #326ce5; }
+        .tag-sonar { background: #4e9bcd; }
+        .tag-approval { background: #f56500; }
+        .tag-post { background: #6f42c1; }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .tech-tag {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .arrow.rotated {
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 768px) {
+            .header-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 Jenkins to GitHub Actions Conversion Dashboard</h1>
+            <div class="header-info">
+                <span><strong>Generated:</strong> 2025-09-04 11:02:26</span>
+                <span><strong>Pipeline Complexity:</strong> Medium (44 points)</span>
+                <span><strong>Conversion Feasibility:</strong> High</span>
+            </div>
+        </header>
+
+        <div class="section status-section">
+            <h2>📊 Conversion Status Overview</h2>
+            <div class="badges">
+                
+        <div class="badge badge-blue">Stages Converted: 10</div>
+        <div class="badge badge-orange">Manual Required: 2</div>
+        <div class="badge badge-green">Feasibility: High</div>
+        <div class="badge badge-yellow">Complexity: Medium</div>
+    
+            </div>
+        </div>
+
+        <div class="section stats-section">
+            <h2>📈 Interactive Statistics</h2>
+            <p style="color: #666; margin-bottom: 20px;">Click on any statistic below to see detailed information</p>
+            <div class="stats-grid">
+                
+        <div class="stat-card clickable" data-type="Total Stages Converted" data-content='<h3>All Converted Stages</h3><div class=\'stages-list\'>
+            <div class=\'stage-summary\'>
+                <strong>1. Checkout</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (6) | 
+                    Action Path: ./.github/actions/checkout
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>2. Set Java & Maven</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (1) | 
+                    Action Path: ./.github/actions/set-java-maven
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>3. Build & Unit Test</strong>
+                <div style=\'margin: 5px 0;\'><span class=\'stage-tag tag-post\'>Post-Actions</span></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (3) | 
+                    Action Path: ./.github/actions/build-unit-test
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>4. Static Code Analysis (SonarQube)</strong>
+                <div style=\'margin: 5px 0;\'><span class=\'stage-tag tag-sonar\'>SonarQube</span></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (5) | 
+                    Action Path: ./.github/actions/static-code-analysis-sonarqube
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>5. Quality Gate</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (4) | 
+                    Action Path: ./.github/actions/quality-gate
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>6. Security Scans</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (3) | 
+                    Action Path: ./.github/actions/security-scans
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>7. Build & Push Docker Image</strong>
+                <div style=\'margin: 5px 0;\'><span class=\'stage-tag tag-docker\'>Docker</span></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Medium (16) | 
+                    Action Path: ./.github/actions/build-push-docker-image
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>8. Manual Approval for Deploy</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (0) | 
+                    Action Path: ./.github/actions/manual-approval-for-deploy
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>9. Deploy to Kubernetes</strong>
+                <div style=\'margin: 5px 0;\'><span class=\'stage-tag tag-k8s\'>K8s</span></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Medium (15) | 
+                    Action Path: ./.github/actions/deploy-to-kubernetes
+                </div>
+            </div>
+        
+            <div class=\'stage-summary\'>
+                <strong>10. Smoke Test</strong>
+                <div style=\'margin: 5px 0;\'></div>
+                <div style=\'font-size: 0.9em; color: #666;\'>
+                    Complexity: Low (3) | 
+                    Action Path: ./.github/actions/smoke-test
+                </div>
+            </div>
+        </div>'>
+            <div class="stat-value">10</div>
+            <div class="stat-label">Total Stages</div>
+            <div class="stat-description">Click to see all converted stages</div>
+        </div>
+        <div class="stat-card clickable" data-type="Docker Operations" data-content='<h3>Docker Operations</h3><div class=\'feature-stages\'>
+            <div class=\'feature-stage\'>
+                <strong>Build & Push Docker Image</strong>
+                <div style=\'margin: 5px 0; font-size: 0.9em; color: #666;\'>
+                    Path: ./.github/actions/build-push-docker-image
+                </div>
+            </div>
+        </div>'>
+            <div class="stat-value">1</div>
+            <div class="stat-label">Docker Stages</div>
+            <div class="stat-description">Stages with Docker build/push operations</div>
+        </div>
+        <div class="stat-card clickable" data-type="Kubernetes Operations" data-content='<h3>Kubernetes Operations</h3><div class=\'feature-stages\'>
+            <div class=\'feature-stage\'>
+                <strong>Deploy to Kubernetes</strong>
+                <div style=\'margin: 5px 0; font-size: 0.9em; color: #666;\'>
+                    Path: ./.github/actions/deploy-to-kubernetes
+                </div>
+            </div>
+        </div>'>
+            <div class="stat-value">1</div>
+            <div class="stat-label">Kubernetes Stages</div>
+            <div class="stat-description">Stages with kubectl/helm commands</div>
+        </div>
+        <div class="stat-card clickable" data-type="SonarQube Integration" data-content='<h3>SonarQube Integration</h3><div class=\'feature-stages\'>
+            <div class=\'feature-stage\'>
+                <strong>Static Code Analysis (SonarQube)</strong>
+                <div style=\'margin: 5px 0; font-size: 0.9em; color: #666;\'>
+                    Path: ./.github/actions/static-code-analysis-sonarqube
+                </div>
+            </div>
+        </div>'>
+            <div class="stat-value">1</div>
+            <div class="stat-label">SonarQube Stages</div>
+            <div class="stat-description">Stages with code quality scanning</div>
+        </div>
+        <div class="stat-card clickable" data-type="Approval Gates" data-content='<h3>Approval Gates</h3><p>No stages found with this feature.</p>'>
+            <div class="stat-value">0</div>
+            <div class="stat-label">Approval Gates</div>
+            <div class="stat-description">Stages requiring manual approval</div>
+        </div>
+        <div class="stat-card clickable" data-type="Post-Action Handling" data-content='<h3>Post-Action Stages</h3><div class=\'feature-stages\'>
+            <div class=\'feature-stage\'>
+                <strong>Build & Unit Test</strong>
+                <div style=\'margin: 5px 0; font-size: 0.9em; color: #666;\'>
+                    Path: ./.github/actions/build-unit-test
+                </div>
+            </div>
+        </div>'>
+            <div class="stat-value">1</div>
+            <div class="stat-label">Post-Actions</div>
+            <div class="stat-description">Stages with post-execution actions</div>
+        </div>
+        <div class="stat-card clickable" data-type="Manual Conversion Required" data-content='<h3>Stages Requiring Manual Attention</h3><div class=\'manual-stages\'>
+            <div class=\'manual-stage\'>
+                <strong>Checkout</strong>
+                <ul style=\'margin: 10px 0; padding-left: 20px;\'>
+        <li>Complex script blocks</li>
+                </ul>
+            </div>
+        
+            <div class=\'manual-stage\'>
+                <strong>Quality Gate</strong>
+                <ul style=\'margin: 10px 0; padding-left: 20px;\'>
+        <li>Jenkins plugin: timeout</li>
+                </ul>
+            </div>
+        </div>'>
+            <div class="stat-value">2</div>
+            <div class="stat-label">Manual Items</div>
+            <div class="stat-description">Stages needing manual attention</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">44</div>
+            <div class="stat-label">Complexity Score</div>
+            <div class="stat-description">Overall pipeline complexity rating</div>
+        </div>
+    
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🛠️ Technology Stack Detected</h2>
+            <h4>Languages/Frameworks</h4><div class='tech-tags'><span class='tech-tag'>Docker</span><span class='tech-tag'>Java</span><span class='tech-tag'>Kubernetes</span><span class='tech-tag'>Shell</span></div><h4>Tools & Technologies</h4><div class='tech-tags'><span class='tech-tag'>Docker</span><span class='tech-tag'>Git</span><span class='tech-tag'>Kubernetes</span><span class='tech-tag'>Maven</span><span class='tech-tag'>OWASP</span><span class='tech-tag'>SonarQube</span></div>
+        </div>
+
+        
+        <div class="section">
+            <h2>🔐 Required GitHub Secrets Configuration</h2>
+            <div class="collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span>Secret Configuration Details</span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Secret Name</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Purpose</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>KUBECONFIG_DEV</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Kubernetes cluster access</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">File (Kubeconfig)</td>
+                            </tr>
+        
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>KUBECONFIG_PRD</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Kubernetes cluster access</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">File (Kubeconfig)</td>
+                            </tr>
+        
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>REGISTRY_WRITER</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Authentication for registry-writer</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Credential</td>
+                            </tr>
+        
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>SLACK_WEBHOOK</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Authentication for slack-webhook</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Credential</td>
+                            </tr>
+        
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>DOCKER_USERNAME</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Docker registry authentication</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Username</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>DOCKER_PASSWORD</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Docker registry authentication</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Password/Token</td>
+                            </tr>
+        
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>SONAR_TOKEN</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">SonarQube server authentication</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">Token</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;"><code>SONAR_HOST_URL</code></td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">SonarQube server URL</td>
+                                <td style="padding: 10px; border: 1px solid #dee2e6;">URL</td>
+                            </tr>
+        
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="section">
+            <h2>📋 Stage Conversion Details</h2>
+            <p style="color: #666; margin-bottom: 20px;">Click on any stage to expand and see detailed conversion information</p>
+            
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Checkout</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">⚠️ Manual</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (6)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/checkout</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    <h4>Manual Conversion Required</h4><ul><li>Complex script blocks</li></ul>
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Set Java & Maven</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (1)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/set-java-maven</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Build & Unit Test</strong>
+                        <div style="margin-top: 5px;"><span class='stage-tag tag-post'>Post-Actions</span></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (3)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/build-unit-test</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    <h4>Post-Action Types</h4><ul><li>always</li></ul>
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Static Code Analysis (SonarQube)</strong>
+                        <div style="margin-top: 5px;"><span class='stage-tag tag-sonar'>SonarQube</span></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (5)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/static-code-analysis-sonarqube</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Quality Gate</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">⚠️ Manual</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (4)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/quality-gate</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    <h4>Manual Conversion Required</h4><ul><li>Jenkins plugin: timeout</li></ul><h4>Plugin Dependencies</h4><ul><li>timeout</li></ul>
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Security Scans</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (3)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/security-scans</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Build & Push Docker Image</strong>
+                        <div style="margin-top: 5px;"><span class='stage-tag tag-docker'>Docker</span></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Medium (16)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/build-push-docker-image</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Manual Approval for Deploy</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (0)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/manual-approval-for-deploy</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Deploy to Kubernetes</strong>
+                        <div style="margin-top: 5px;"><span class='stage-tag tag-k8s'>K8s</span></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Medium (15)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/deploy-to-kubernetes</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+            <div class="stage-card">
+                <div class="stage-header" onclick="toggleCollapsible(this)">
+                    <div>
+                        <strong>Smoke Test</strong>
+                        <div style="margin-top: 5px;"></div>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">✅ Ready</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <div class="stage-info">
+                        <div><strong>Complexity:</strong> Low (3)</div>
+                        <div><strong>Action Path:</strong> ./.github/actions/smoke-test</div>
+                        <div><strong>Credentials:</strong> 0</div>
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        
+        </div>
+
+        
+        <div class="section">
+            <h2>🔧 Manual Conversion Required</h2>
+    
+            <div class="collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span>Stage-Level Manual Items</span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+        
+                <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4>Checkout</h4>
+                    <ul>
+            <li>Complex script blocks</li></ul></div>
+                <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4>Quality Gate</h4>
+                    <ul>
+            <li>Jenkins plugin: timeout</li></ul></div></div></div>
+            <div class="collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span>Pipeline-Level Unsupported Features</span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+        
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>Build triggers</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Configure repository webhooks or use scheduled workflows</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>Options block</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Set workflow-level timeouts, concurrency, and retention policies</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>When expressions (complex)</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Review Jenkins documentation and implement equivalent logic</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>When expressions (complex)</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Review Jenkins documentation and implement equivalent logic</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>Script blocks (complex)</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Review Jenkins documentation and implement equivalent logic</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>Script blocks (complex)</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Review Jenkins documentation and implement equivalent logic</span>
+                </div>
+            
+                <div style="margin-bottom: 15px; padding: 10px; background: #fef5e7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                    <strong>Timeout (complex)</strong><br>
+                    <span style="color: #92400e; font-size: 0.9em;">Review Jenkins documentation and implement equivalent logic</span>
+                </div>
+            </div></div></div>
+
+        
+        <div class="section">
+            <h2>✅ Next Steps Checklist</h2>
+            <div class="collapsible">
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <span>Implementation Checklist</span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    
+                        <div>
+                            <h4>Repository Setup</h4>
+                            <div style="font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                                ☐ Review generated workflow file<br>
+                                ☐ Configure repository secrets<br>
+                                ☐ Set up environments (if needed)<br>
+                                ☐ Test with sample commit
+                            </div>
+                        </div>
+    
+                        <div>
+                            <h4>Service Integration</h4>
+                            <div style="font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+        ☐ Configure SonarQube integration<br>☐ Set up Docker registry auth<br>☐ Configure Kubernetes access<br></div></div>
+                        <div>
+                            <h4>Manual Tasks</h4>
+                            <div style="font-family: monospace; background: #fef5e7; padding: 10px; border-radius: 4px;">
+                                ☐ Address 2 manual items<br>
+                                ☐ Test complex script blocks<br>
+                                ☐ Verify plugin replacements
+                            </div>
+                        </div>
+        
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+        <div class="section">
+            <h2>📁 Generated Files Structure</h2>
+            
+        <div class="code-block" style="font-family: monospace; white-space: pre;">
+.github/
+├── workflows/
+│   └── ci.yml                 # Main workflow file
+└── actions/
+    ├── checkout/
+│   └── action.yml
+├── set-java-&-maven/
+│   └── action.yml
+├── build-&-unit-test/
+│   └── action.yml
+├── static-code-analysis-(sonarqube)/
+│   └── action.yml
+├── quality-gate/
+│   └── action.yml
+├── security-scans/
+│   └── action.yml
+├── build-&-push-docker-image/
+│   └── action.yml
+├── manual-approval-for-deploy/
+│   └── action.yml
+├── deploy-to-kubernetes/
+│   └── action.yml
+└── smoke-test/
+    └── action.yml
+
+CONVERSION_REPORT.html         # This interactive report
+    </div>
+        </div>
+    </div>
+
+    
+    <!-- Stage Details Modal -->
+    <div id="stageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Content Details Modal -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('contentModal').style.display='none'">&times;</span>
+            <h2 id="contentModalTitle"></h2>
+            <div id="contentModalBody"></div>
+        </div>
+    </div>
+    
+
+    <script>
+        
+        // Toggle collapsible sections
+        function toggleCollapsible(element) {
+            const content = element.nextElementSibling;
+            const arrow = element.querySelector('.arrow');
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                arrow.classList.remove('rotated');
+            } else {
+                content.classList.add('show');
+                arrow.classList.add('rotated');
+            }
+        }
+
+        // Show stage details in modal
+        function showStageDetails(stageName, stageData) {
+            const modal = document.getElementById('stageModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = stageName;
+            modalBody.innerHTML = stageData;
+            modal.style.display = 'block';
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('stageModal').style.display = 'none';
+        }
+
+        // Show clickable content
+        function showClickableContent(type, data) {
+            const modal = document.getElementById('contentModal');
+            const modalTitle = document.getElementById('contentModalTitle');
+            const modalBody = document.getElementById('contentModalBody');
+            
+            modalTitle.textContent = type;
+            modalBody.innerHTML = data;
+            modal.style.display = 'block';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close modals when clicking outside
+            window.onclick = function(event) {
+                const stageModal = document.getElementById('stageModal');
+                const contentModal = document.getElementById('contentModal');
+                
+                if (event.target === stageModal) {
+                    stageModal.style.display = 'none';
+                }
+                if (event.target === contentModal) {
+                    contentModal.style.display = 'none';
+                }
+            }
+
+            // Add click handlers for stat cards
+            document.querySelectorAll('.stat-card.clickable').forEach(card => {
+                card.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const content = this.dataset.content;
+                    showClickableContent(type, content);
+                });
+            });
+        });
+    
+    </script>
+</body>
+</html>

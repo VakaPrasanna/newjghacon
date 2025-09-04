@@ -8,7 +8,7 @@ runs:
     run: export KUBECONFIG=$KCONFIG
     shell: bash
   - name: Run command 2
-    run: kubectl set image deployment/${params.APP_NAME} ${params.APP_NAME}=${IMAGE}:${BUILD_TAG} -n ${params.DEPLOY_ENV}
+    run: kubectl set image deployment/${params.APP_NAME} ${params.APP_NAME}=${{ inputs.image-name }}:${{ inputs.build-tag }} -n ${params.DEPLOY_ENV}
     shell: bash
   - name: Run command 3
     run: kubectl rollout status deployment/${params.APP_NAME} -n ${params.DEPLOY_ENV} --timeout=5m
