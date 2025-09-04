@@ -18,8 +18,8 @@ runs:
     with:
       # projectKey: j2github
       # projectName: j2github
-     projectBaseDir:
-     args:>
+     projectBaseDir: .
+     args: >
       -Dsonar.projectKey=j2github  
       -Dsonar.projectName=j2github  
       -Dsonar.projectVersion=${{ github.run_number }}
