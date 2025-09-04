@@ -38,8 +38,8 @@ name: CI Pipeline
         - stg
         - prd
 env:
-  REGISTRY: ghcr.io/your-org
-  IMAGE: ${env.REGISTRY}/${params.APP_NAME}
+  # REGISTRY: ghcr.io/your-org
+  # IMAGE: ${env.REGISTRY}/${params.APP_NAME}
   SONARQUBE_SERVER: sonarqube-prod
   REGISTRY_CRED: credentials('registry-writer')
   SLACK_CRED: credentials('slack-webhook')
@@ -119,8 +119,8 @@ jobs:
       with:
         docker-username: ${{ secrets.DOCKER_USERNAME }}
         docker-password: ${{ secrets.DOCKER_PASSWORD }}
-        registry-cred-username: ${{ secrets.REGISTRY_CRED_USERNAME }}
-        registry-cred-password: ${{ secrets.REGISTRY_CRED_PASSWORD }}
+        # registry-cred-username: ${{ secrets.REGISTRY_CRED_USERNAME }}
+        # registry-cred-password: ${{ secrets.REGISTRY_CRED_PASSWORD }}
         image-name: prasannavaka81/newjghacon
         # ${{ secrets.DOCKER_USERNAME }}
         build-tag: ${{ github.sha }}
