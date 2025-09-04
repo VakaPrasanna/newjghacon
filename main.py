@@ -2,12 +2,13 @@
 #!/usr/bin/env python3
 """
 Enhanced Jenkins Declarative Pipeline -> GitHub Actions converter
-Main entry point for the conversion tool with comprehensive error handling
+Main entry point with interactive HTML report generation
 """
 
 import sys
 import yaml
 from pathlib import Path
+from typing import List, Dict, Any
 from converter import convert_jenkins_to_gha
 from report_generator import generate_conversion_report
 
@@ -20,7 +21,7 @@ def main():
         print("\nFeatures:")
         print("  - Comprehensive Jenkins feature support")
         print("  - Stage-level post-action handling")
-        print("  - Dashboard-style conversion reports")
+        print("  - Interactive HTML dashboard report")
         print("  - Automatic limitation detection")
         print("  - Manual conversion guidance")
         sys.exit(1)
@@ -36,7 +37,9 @@ def main():
     workflow_path = output_dir / ".github" / "workflows" / "ci.yml"
     workflow_path.parent.mkdir(parents=True, exist_ok=True)
     
-    report_path = output_dir / "CONVERSION_REPORT.md"
+    # Generate both HTML and Markdown reports
+    html_report_path = output_dir / "CONVERSION_REPORT.html"
+    md_report_path = output_dir / "CONVERSION_REPORT.md"
 
     try:
         jenkins_text = in_path.read_text(encoding="utf-8")
@@ -49,23 +52,31 @@ def main():
         # Save workflow file with enhanced formatting
         print("Generating main workflow file...")
         with workflow_path.open("w", encoding="utf-8") as f:
-            # Custom YAML representation for better formatting
-            yaml_content = yaml.dump(gha, f, sort_keys=False, width=1000, default_flow_style=False, allow_unicode=True)
+            yaml.dump(gha, f, sort_keys=False, width=1000, default_flow_style=False, allow_unicode=True)
         
         print(f"✅ Main workflow saved to: {workflow_path}")
         
-        # Generate and save comprehensive conversion report
-        print("Generating conversion report...")
-        report = generate_conversion_report(action_paths, jenkins_text)
-        with report_path.open("w", encoding="utf-8") as f:
-            f.write(report)
+        # Generate interactive HTML conversion report
+        print("Generating interactive HTML report...")
+        html_report = generate_conversion_report(action_paths, jenkins_text)
+        with html_report_path.open("w", encoding="utf-8") as f:
+            f.write(html_report)
         
-        print(f"✅ Conversion report saved to: {report_path}")
+        print(f"✅ Interactive HTML report saved to: {html_report_path}")
+        
+        # Also generate a simple markdown version for compatibility
+        print("Generating markdown report...")
+        md_report = generate_simple_markdown_report(action_paths, jenkins_text)
+        with md_report_path.open("w", encoding="utf-8") as f:
+            f.write(md_report)
+        
+        print(f"✅ Markdown report saved to: {md_report_path}")
         
         # Display summary of generated files
         print("\n📁 Generated files:")
         print(f"   - {workflow_path.relative_to(output_dir)}")
-        print(f"   - {report_path.relative_to(output_dir)}")
+        print(f"   - {html_report_path.relative_to(output_dir)} (INTERACTIVE)")
+        print(f"   - {md_report_path.relative_to(output_dir)}")
         
         # List generated composite actions
         actions_dir = output_dir / ".github" / "actions"
@@ -87,7 +98,7 @@ def main():
         manual_items = sum(len(a.get("manual_conversion_needed", [])) for a in action_paths)
         if manual_items > 0:
             print(f"   - Manual items requiring attention: {manual_items}")
-            print("   ⚠️  Check CONVERSION_REPORT.md for detailed guidance")
+            print("   ⚠️  Check the interactive HTML report for detailed guidance")
         else:
             print("   ✅ No manual conversion required")
         
@@ -104,15 +115,17 @@ def main():
         
         if all_credentials:
             print(f"   - GitHub Secrets to configure: {len(all_credentials)}")
-            print("   🔐 See report for complete secrets list")
+            print("   🔐 See interactive report for complete secrets list")
         
         print(f"\n🎯 Next Steps:")
-        print(f"   1. Review the comprehensive report: {report_path}")
-        print(f"   2. Configure GitHub Secrets and Environments")
-        print(f"   3. Test the workflow with a sample commit")
-        print(f"   4. Address any manual conversion items")
+        print(f"   1. Open the interactive report: {html_report_path}")
+        print(f"   2. Click on statistics to explore conversion details")
+        print(f"   3. Review stage-by-stage breakdown")
+        print(f"   4. Configure GitHub Secrets and Environments")
+        print(f"   5. Test the workflow with a sample commit")
         
         print(f"\n✨ Conversion completed successfully!")
+        print(f"📱 Open {html_report_path.name} in your browser for an interactive experience!")
         
     except ValueError as e:
         print(f"❌ Pipeline Parsing Error: {e}")
@@ -145,6 +158,70 @@ def main():
         sys.exit(1)
 
 
+def generate_simple_markdown_report(action_paths: List[Dict[str, Any]], pipeline_text: str) -> str:
+    """Generate a simple markdown report for compatibility"""
+    
+    from datetime import datetime
+    from utils import analyze_pipeline_complexity, validate_conversion_feasibility
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    complexity_analysis = analyze_pipeline_complexity(pipeline_text)
+    feasibility_analysis = validate_conversion_feasibility(pipeline_text)
+    
+    report = [
+        "# Jenkins to GitHub Actions Conversion Report",
+        "",
+        f"**Generated:** {timestamp}",
+        f"**Pipeline Complexity:** {complexity_analysis['complexity_level']} ({complexity_analysis['complexity_score']} points)",
+        f"**Conversion Feasibility:** {feasibility_analysis['confidence']}",
+        "",
+        "## Conversion Summary",
+        f"- **Stages converted**: {len(action_paths)}",
+        f"- **Manual items**: {sum(len(a.get('manual_conversion_needed', [])) for a in action_paths)}",
+        f"- **Approval gates**: {len([a for a in action_paths if a.get('approval_environment')])}",
+        "",
+        "## Interactive Report Available",
+        "📱 **Open CONVERSION_REPORT.html in your browser for an interactive experience with:**",
+        "- Clickable statistics that show detailed stage information",
+        "- Expandable stage details with full conversion data",
+        "- Interactive secrets and credentials configuration",
+        "- Step-by-step implementation guidance",
+        "",
+        "## Quick Stage Overview",
+        ""
+    ]
+    
+    for i, action in enumerate(action_paths, 1):
+        features = []
+        if action.get("has_docker"):
+            features.append("Docker")
+        if action.get("has_kubectl"):
+            features.append("K8s")
+        if action.get("has_sonarqube"):
+            features.append("SonarQube")
+        if action.get("approval_environment"):
+            features.append("Approval")
+        
+        manual_count = len(action.get("manual_conversion_needed", []))
+        status = "⚠️ Manual" if manual_count > 0 else "✅ Ready"
+        features_str = f"({', '.join(features)})" if features else ""
+        
+        report.append(f"{i}. **{action['name']}** {features_str} - {status}")
+    
+    report.extend([
+        "",
+        "## Next Steps",
+        "1. **Open the interactive HTML report** for detailed guidance",
+        "2. **Configure GitHub repository secrets**",
+        "3. **Set up environments for approval gates**",
+        "4. **Test the generated workflow**",
+        "",
+        "---",
+        "*For the full interactive experience with clickable elements and detailed breakdowns, open CONVERSION_REPORT.html in your web browser.*"
+    ])
+    
+    return "\n".join(report)
+
+
 if __name__ == "__main__":
     main()
-
