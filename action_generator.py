@@ -1,6 +1,6 @@
 
 """
-Enhanced composite action generation for GitHub Actions with comprehensive post-action support
+Enhanced composite action generation for GitHub Actions with proper secrets handling
 """
 
 import re
@@ -94,7 +94,6 @@ def convert_git_steps_to_actions(git_steps: List[Dict[str, Any]]) -> List[Dict[s
         
         # Handle different git step types
         if git_step.get("type") == "scm":
-            # checkout scm - use default checkout
             checkout_steps.append(step)
             continue
         elif git_step.get("type") == "clone":
@@ -121,7 +120,7 @@ def convert_git_steps_to_actions(git_steps: List[Dict[str, Any]]) -> List[Dict[s
         if git_step["credentialsId"]:
             # Convert credential ID to secret reference
             cred_id = sanitize_credential_name(git_step["credentialsId"])
-            with_params["token"] = f"${{{{ secrets.{cred_id} }}}}"
+            with_params["token"] = f"${{{{ inputs.{cred_id.lower().replace('_', '-')}-token }}}}"
         
         if with_params:
             step["with"] = with_params
@@ -138,7 +137,6 @@ def extract_repo_from_url(url: str) -> str:
     elif url.startswith("git@github.com:"):
         return url.replace("git@github.com:", "").replace(".git", "")
     elif "/" in url and not url.startswith("http"):
-        # Assume it's already in owner/repo format
         return url
     return url
 
@@ -157,10 +155,10 @@ def convert_sonarqube_steps(sonar_steps: List[Dict[str, Any]]) -> List[Dict[str,
         action = {
             "name": "SonarQube Scan",
             "uses": "sonarqube-scan-action@master",
-            # "env": {
-            #     "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
-            #     "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
-            # }
+            "env": {
+                "SONAR_TOKEN": "${{ inputs.sonar-token }}",
+                "SONAR_HOST_URL": "${{ inputs.sonar-host-url }}"
+            }
         }
         
         # Extract sonar properties from commands
@@ -187,40 +185,25 @@ def convert_sonarqube_steps(sonar_steps: List[Dict[str, Any]]) -> List[Dict[str,
                 "name": "Run SonarQube analysis",
                 "run": cmd,
                 "shell": "bash",
-                # "env": {
-                #     "SONAR_TOKEN": "${{ secrets.SONAR_TOKEN }}",
-                #     "SONAR_HOST_URL": "${{ secrets.SONAR_HOST_URL }}"
-                # }
+                "env": {
+                    "SONAR_TOKEN": "${{ inputs.sonar-token }}",
+                    "SONAR_HOST_URL": "${{ inputs.sonar-host-url }}"
+                }
             })
     
     return sonar_actions
 
 
 def convert_docker_steps(docker_steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Convert Docker steps to GitHub Actions"""
+    """Convert Docker steps to GitHub Actions with proper input references"""
     docker_actions = []
     needs_login = False
     
+    # Check if login is needed
     for docker_step in docker_steps:
-        if docker_step["type"] == "build":
-            build_cmd = f"docker build -t {docker_step['tag']} {docker_step['context']}"
-            if docker_step.get("dockerfile"):
-                build_cmd = f"docker build -f {docker_step['dockerfile']} -t {docker_step['tag']} {docker_step['context']}"
-            
-            docker_actions.append({
-                "name": "Build Docker image",
-                "run": build_cmd,
-                "shell": "bash"
-            })
-        elif docker_step["type"] == "push":
+        if docker_step["type"] in ["push", "login"]:
             needs_login = True
-            docker_actions.append({
-                "name": "Push Docker image",
-                "run": f"docker push {docker_step['tag']}",
-                "shell": "bash"
-            })
-        elif docker_step["type"] == "login":
-            needs_login = True
+            break
     
     # Add Docker login if needed
     if needs_login:
@@ -228,11 +211,30 @@ def convert_docker_steps(docker_steps: List[Dict[str, Any]]) -> List[Dict[str, A
             "name": "Login to DockerHub",
             "uses": "docker/login-action@v3",
             "with": {
-                "username": "${{ secrets.DOCKER_USERNAME }}",
-                "password": "${{ secrets.DOCKER_PASSWORD }}"
+                "username": "${{ inputs.docker-username }}",
+                "password": "${{ inputs.docker-password }}"
             }
         }
-        docker_actions.insert(0, login_step)
+        docker_actions.append(login_step)
+    
+    for docker_step in docker_steps:
+        if docker_step["type"] == "build":
+            # Use inputs for dynamic values
+            build_cmd = "docker build -t ${{ inputs.image-name }}:${{ inputs.build-tag }} ."
+            if docker_step.get("dockerfile"):
+                build_cmd = f"docker build -f {docker_step['dockerfile']} -t ${{{{ inputs.image-name }}}}:${{{{ inputs.build-tag }}}} ."
+            
+            docker_actions.append({
+                "name": "Build Docker image",
+                "run": build_cmd,
+                "shell": "bash"
+            })
+        elif docker_step["type"] == "push":
+            docker_actions.append({
+                "name": "Push Docker image",
+                "run": "docker push ${{ inputs.image-name }}:${{ inputs.build-tag }}",
+                "shell": "bash"
+            })
     
     return docker_actions
 
@@ -240,7 +242,6 @@ def convert_docker_steps(docker_steps: List[Dict[str, Any]]) -> List[Dict[str, A
 def convert_input_steps_to_environment(input_steps: List[Dict[str, Any]], stage_name: str) -> str:
     """Convert input steps to environment requirement"""
     if input_steps:
-        # Return environment name for manual approval
         return f"approval-{sanitize_name(stage_name.lower())}"
     return ""
 
@@ -249,12 +250,11 @@ def convert_post_actions_to_steps(post_info: Dict[str, Any], stage_name: str) ->
     """Convert Jenkins post actions to GitHub Actions steps with proper conditions"""
     post_steps = []
     
-    # Map Jenkins post conditions to GitHub Actions conditions
     condition_map = {
         "always": "always()",
         "success": "success()",
         "failure": "failure()",
-        "unstable": "success() || failure()",  # GitHub doesn't have unstable, treat as always
+        "unstable": "success() || failure()",
         "cleanup": "always()",
         "aborted": "cancelled()"
     }
@@ -274,7 +274,6 @@ def convert_post_actions_to_steps(post_info: Dict[str, Any], stage_name: str) ->
                 }
             }
             
-            # Add additional options
             if actions.get("allowEmptyArchive"):
                 step["continue-on-error"] = True
             
@@ -323,11 +322,11 @@ def convert_post_actions_to_steps(post_info: Dict[str, Any], stage_name: str) ->
                 "with": {
                     "server_address": "smtp.gmail.com",
                     "server_port": "587",
-                    "username": "${{ secrets.EMAIL_USERNAME }}",
-                    "password": "${{ secrets.EMAIL_PASSWORD }}",
+                    "username": "${{ inputs.email-username }}",
+                    "password": "${{ inputs.email-password }}",
                     "subject": mail_info.get("subject", f"Pipeline {condition}: ${{ github.workflow }}"),
                     "to": mail_info["to"],
-                    "from": "${{ secrets.EMAIL_USERNAME }}",
+                    "from": "${{ inputs.email-username }}",
                     "body": mail_info.get("body", f"Pipeline {condition} for ${{ github.repository }} - ${{ github.sha }}")
                 }
             })
@@ -340,8 +339,8 @@ def convert_post_actions_to_steps(post_info: Dict[str, Any], stage_name: str) ->
                 "uses": "8398a7/action-slack@v3",
                 "with": {
                     "status": condition,
-                    "channel": "${{ secrets.SLACK_CHANNEL }}",
-                    "webhook_url": "${{ secrets.SLACK_WEBHOOK_URL }}"
+                    "channel": "${{ inputs.slack-channel }}",
+                    "webhook_url": "${{ inputs.slack-webhook-url }}"
                 }
             })
         
@@ -381,29 +380,23 @@ def convert_credentials_to_env_setup(cred_blocks: List[Dict[str, Any]]) -> List[
     env_steps = []
     
     for cred_block in cred_blocks:
-        # Create environment setup based on credential types
         env_vars = {}
-        secrets_needed = []
         
         for cred in cred_block["credentials"]:
-            cred_name = sanitize_credential_name(cred["credentialsId"])
+            cred_name = sanitize_credential_name(cred["credentialsId"]).lower().replace('_', '-')
             
             if cred["type"] == "usernamePassword":
-                env_vars[cred["usernameVariable"]] = f"${{{{ secrets.{cred_name}_USERNAME }}}}"
-                env_vars[cred["passwordVariable"]] = f"${{{{ secrets.{cred_name}_PASSWORD }}}}"
-                secrets_needed.extend([f"{cred_name}_USERNAME", f"{cred_name}_PASSWORD"])
+                env_vars[cred["usernameVariable"]] = f"${{{{ inputs.{cred_name}-username }}}}"
+                env_vars[cred["passwordVariable"]] = f"${{{{ inputs.{cred_name}-password }}}}"
             elif cred["type"] == "string":
-                env_vars[cred["variable"]] = f"${{{{ secrets.{cred_name} }}}}"
-                secrets_needed.append(cred_name)
+                env_vars[cred["variable"]] = f"${{{{ inputs.{cred_name} }}}}"
             elif cred["type"] == "file":
-                # File credentials need special handling
                 env_steps.append({
                     "name": f"Setup {cred['variable']} file credential",
-                    "run": f"echo '${{{{ secrets.{cred_name} }}}}' > {cred['variable']}",
+                    "run": f"echo '${{{{ inputs.{cred_name} }}}}' > {cred['variable']}",
                     "shell": "bash"
                 })
                 env_vars[cred["variable"]] = cred["variable"]
-                secrets_needed.append(cred_name)
         
         # Add the actual commands with environment variables
         if cred_block["content"]:
@@ -421,9 +414,104 @@ def convert_credentials_to_env_setup(cred_blocks: List[Dict[str, Any]]) -> List[
     return env_steps
 
 
+def extract_required_secrets_from_stage(stage_body: str) -> Dict[str, Dict[str, str]]:
+    """Extract and categorize secrets needed for the stage"""
+    secrets = {}
+    
+    # Docker credentials
+    docker_steps = extract_docker_steps(stage_body)
+    if any(step["type"] in ["push", "login"] for step in docker_steps):
+        secrets["docker-username"] = {
+            "description": "Docker registry username",
+            "required": "true"
+        }
+        secrets["docker-password"] = {
+            "description": "Docker registry password", 
+            "required": "true"
+        }
+    
+    # Registry credentials from commands
+    if "docker login" in stage_body:
+        secrets["registry-cred-username"] = {
+            "description": "Registry credential username for login command",
+            "required": "false"
+        }
+        secrets["registry-cred-password"] = {
+            "description": "Registry credential password for login command", 
+            "required": "false"
+        }
+    
+    # SonarQube credentials
+    sonar_steps = extract_sonarqube_steps(stage_body)
+    if sonar_steps:
+        secrets["sonar-token"] = {
+            "description": "SonarQube authentication token",
+            "required": "true"
+        }
+        secrets["sonar-host-url"] = {
+            "description": "SonarQube server URL",
+            "required": "true"
+        }
+    
+    # Email credentials
+    if "mail " in stage_body or "emailext" in stage_body:
+        secrets["email-username"] = {
+            "description": "Email username for notifications",
+            "required": "false"
+        }
+        secrets["email-password"] = {
+            "description": "Email password for notifications",
+            "required": "false"
+        }
+    
+    # Slack credentials
+    if "slackSend" in stage_body:
+        secrets["slack-channel"] = {
+            "description": "Slack channel for notifications",
+            "required": "false"
+        }
+        secrets["slack-webhook-url"] = {
+            "description": "Slack webhook URL for notifications",
+            "required": "false"
+        }
+    
+    # Extract credentials from withCredentials blocks
+    cred_blocks = extract_withCredentials_blocks(stage_body)
+    for cred_block in cred_blocks:
+        for cred in cred_block["credentials"]:
+            cred_name = sanitize_credential_name(cred["credentialsId"]).lower().replace('_', '-')
+            
+            if cred["type"] == "usernamePassword":
+                secrets[f"{cred_name}-username"] = {
+                    "description": f"Username for {cred['credentialsId']}",
+                    "required": "true"
+                }
+                secrets[f"{cred_name}-password"] = {
+                    "description": f"Password for {cred['credentialsId']}",
+                    "required": "true"
+                }
+            elif cred["type"] in ["string", "file"]:
+                secrets[cred_name] = {
+                    "description": f"Credential {cred['credentialsId']}",
+                    "required": "true"
+                }
+    
+    # Direct credentials usage
+    credentials = extract_credentials_usage(stage_body)
+    for cred_id in credentials:
+        cred_name = sanitize_credential_name(cred_id).lower().replace('_', '-')
+        if cred_name not in secrets:
+            secrets[cred_name] = {
+                "description": f"Credential {cred_id}",
+                "required": "false"
+            }
+    
+    return secrets
+
+
 def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_env: Dict[str, str], 
                                      stage_agent: Dict[str, Any], post_info: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate enhanced composite action with comprehensive Jenkins feature support"""
+    """Generate enhanced composite action with proper secrets handling"""
     
     # Extract all Jenkins features
     tools = extract_tools(stage_body)
@@ -432,7 +520,6 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
     docker_steps = extract_docker_steps(stage_body)
     kubectl_commands = extract_kubectl_steps(stage_body)
     input_steps = extract_input_steps(stage_body)
-    credentials = extract_credentials_usage(stage_body)
     basic_commands = extract_steps_commands(stage_body)
     cred_blocks = extract_withCredentials_blocks(stage_body)
     script_blocks = extract_script_blocks(stage_body)
@@ -448,14 +535,40 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
         }
     }
     
+    # Extract required secrets and add as inputs
+    required_secrets = extract_required_secrets_from_stage(stage_body)
+    for secret_name, secret_info in required_secrets.items():
+        action_def["inputs"][secret_name] = secret_info
+    
+    # Add common inputs for Docker builds
+    if docker_steps:
+        if "registry" not in action_def["inputs"]:
+            action_def["inputs"]["registry"] = {
+                "description": "Docker registry URL",
+                "required": False,
+                "default": "docker.io"
+            }
+        if "image-name" not in action_def["inputs"]:
+            action_def["inputs"]["image-name"] = {
+                "description": "Docker image name",
+                "required": True
+            }
+        if "build-tag" not in action_def["inputs"]:
+            action_def["inputs"]["build-tag"] = {
+                "description": "Docker build tag",
+                "required": False,
+                "default": "latest"
+            }
+    
     # Add environment variables as inputs
     for env_key, env_val in stage_env.items():
         input_key = env_key.lower().replace('_', '-')
-        action_def["inputs"][input_key] = {
-            "description": f"Environment variable {env_key}",
-            "required": False,
-            "default": env_val
-        }
+        if input_key not in action_def["inputs"]:
+            action_def["inputs"][input_key] = {
+                "description": f"Environment variable {env_key}",
+                "required": False,
+                "default": env_val
+            }
     
     steps = []
     
@@ -483,7 +596,7 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
         docker_actions = convert_docker_steps(docker_steps)
         steps.extend(docker_actions)
     
-    # Add basic shell commands (filtered to avoid duplicates)
+    # Process basic shell commands and replace variable references
     filtered_commands = []
     for cmd in basic_commands:
         # Skip commands that are handled by specialized steps
@@ -494,7 +607,16 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
             cmd.startswith("docker push") and docker_steps,
             "mvn sonar:sonar" in cmd and sonar_steps
         ]):
-            filtered_commands.append(cmd)
+            # Replace Jenkins variables with GitHub Actions inputs
+            processed_cmd = cmd
+            processed_cmd = re.sub(r'\$\{IMAGE\}', '${{ inputs.image-name }}', processed_cmd)
+            processed_cmd = re.sub(r'\$\{BUILD_TAG\}', '${{ inputs.build-tag }}', processed_cmd)
+            processed_cmd = re.sub(r'\$\{REGISTRY\}', '${{ inputs.registry }}', processed_cmd)
+            processed_cmd = re.sub(r'\$\{REGISTRY_CRED_USR\}', '${{ inputs.registry-cred-username }}', processed_cmd)
+            processed_cmd = re.sub(r'\$\{REGISTRY_CRED_PSW\}', '${{ inputs.registry-cred-password }}', processed_cmd)
+            processed_cmd = re.sub(r'\$\{DIGEST\}', '${IMAGE_DIGEST}', processed_cmd)
+            
+            filtered_commands.append(processed_cmd)
     
     for i, cmd in enumerate(filtered_commands):
         step = {
@@ -502,8 +624,13 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
             "run": cmd,
             "shell": "bash"
         }
-        if stage_env:
-            step["env"] = {k: f"${{{{ inputs.{k.lower().replace('_', '-')} }}}}" for k in stage_env.keys()}
+        
+        # Add conditional execution for commands that depend on optional inputs
+        if "registry-cred-username" in cmd and "registry-cred-password" in cmd:
+            step["if"] = "${{ inputs.registry-cred-username != '' }}"
+        elif "registry-cred-password" in cmd and "echo" in cmd:
+            step["if"] = "${{ inputs.registry-cred-password != '' }}"
+        
         steps.append(step)
     
     # Add kubectl/helm commands
@@ -543,7 +670,7 @@ def generate_enhanced_composite_action(stage_name: str, stage_body: str, stage_e
 
 
 def save_enhanced_composite_actions(stages_info: List[Dict[str, Any]], output_dir: Path) -> List[Dict[str, Any]]:
-    """Save enhanced composite actions and return comprehensive metadata"""
+    """Save enhanced composite actions with proper secrets handling"""
     actions_dir = output_dir / ".github" / "actions"
     actions_dir.mkdir(parents=True, exist_ok=True)
     
@@ -575,7 +702,7 @@ def save_enhanced_composite_actions(stages_info: List[Dict[str, Any]], output_di
         
         relative_path = f"./.github/actions/{action_name}"
         
-        # Extract comprehensive metadata for job creation and reporting
+        # Extract comprehensive metadata
         input_steps = extract_input_steps(stage_body)
         approval_env = convert_input_steps_to_environment(input_steps, stage_name)
         credentials = extract_credentials_usage(stage_body)
@@ -591,12 +718,16 @@ def save_enhanced_composite_actions(stages_info: List[Dict[str, Any]], output_di
         if post_info and any("script_block" in actions for actions in post_info.values()):
             manual_conversion_needed.append("Post-action script blocks")
         
+        # Extract required secrets for job-level passing
+        required_secrets = extract_required_secrets_from_stage(stage_body)
+        
         action_metadata = {
             "name": stage_name,
             "path": relative_path,
             "env": stage_info.get("env", {}),
             "approval_environment": approval_env,
             "credentials": list(credentials),
+            "required_secrets": list(required_secrets.keys()),
             "has_docker": bool(extract_docker_steps(stage_body)),
             "has_kubectl": bool(extract_kubectl_steps(stage_body)),
             "has_sonarqube": bool(extract_sonarqube_steps(stage_body)),
