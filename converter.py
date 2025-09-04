@@ -1,7 +1,7 @@
 
 """
 Enhanced Jenkins Declarative Pipeline -> GitHub Actions converter
-Core conversion logic with comprehensive error handling and feature support
+Core conversion logic with proper secrets handling
 """
 
 import re
@@ -179,7 +179,7 @@ def convert_jenkins_to_gha(jenkins_text: str, output_dir: Path = Path(".")) -> T
                 job_def["container"]["options"] = stage_agent["args"]
 
     def create_enhanced_job_steps(action_info: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Create enhanced job steps with better checkout handling and error management"""
+        """Create enhanced job steps with proper secrets passing"""
         steps = []
         
         # Add checkout only if the action doesn't handle git steps itself
@@ -192,16 +192,40 @@ def convert_jenkins_to_gha(jenkins_text: str, output_dir: Path = Path(".")) -> T
             
             steps.append(checkout_step)
         
-        # Add composite action step
+        # Add composite action step with proper secrets
         step = {
             "name": f"Run {action_info['name']}",
             "uses": action_info["path"]
         }
         
-        # Add inputs for environment variables
+        # Create with block for secrets and inputs
+        with_block = {}
+        
+        # Add required secrets from the action
+        required_secrets = action_info.get("required_secrets", [])
+        for secret_key in required_secrets:
+            # Map secret keys to GitHub secrets
+            github_secret_name = map_to_github_secret(secret_key)
+            with_block[secret_key] = f"${{{{ secrets.{github_secret_name} }}}}"
+        
+        # Add environment variables as inputs
         stage_env = action_info.get("env", {})
-        if stage_env:
-            step["with"] = {k.lower().replace('_', '-'): f"${{{{ env.{k} }}}}" for k in stage_env.keys()}
+        for env_key in stage_env.keys():
+            input_key = env_key.lower().replace('_', '-')
+            if input_key not in with_block:  # Don't override secrets
+                with_block[input_key] = f"${{{{ env.{env_key} }}}}"
+        
+        # Add common inputs for Docker builds
+        if action_info.get("has_docker"):
+            if "image-name" not in with_block:
+                with_block["image-name"] = "${{ github.repository }}"
+            if "build-tag" not in with_block:
+                with_block["build-tag"] = "${{ github.sha }}"
+            if "registry" not in with_block:
+                with_block["registry"] = "docker.io"
+        
+        if with_block:
+            step["with"] = with_block
         
         # Add error handling for critical steps
         if action_info.get("has_docker") or action_info.get("has_kubectl"):
@@ -209,6 +233,11 @@ def convert_jenkins_to_gha(jenkins_text: str, output_dir: Path = Path(".")) -> T
         
         steps.append(step)
         return steps
+
+    def map_to_github_secret(secret_key: str) -> str:
+        """Map action input secret keys to GitHub secret names"""
+        # Convert kebab-case to UPPER_SNAKE_CASE
+        return secret_key.upper().replace('-', '_')
 
     def create_when_condition(when_conditions: Dict[str, Any]) -> Optional[str]:
         """Convert Jenkins when conditions to GitHub Actions if conditions"""
@@ -423,11 +452,12 @@ def convert_jenkins_to_gha(jenkins_text: str, output_dir: Path = Path(".")) -> T
                 "name": stage_info["name"],
                 "path": f"./.github/actions/{sanitize_name(stage_info['name'].lower())}",
                 "env": stage_info.get("env", {}),
+                "required_secrets": [],
                 "conversion_error": "Failed to generate composite action",
                 "manual_conversion_needed": ["Complete stage conversion"]
             })
 
-    # Update job steps to use enhanced composite actions
+    # Update job steps to use enhanced composite actions with proper secrets
     job_keys = list(gha["jobs"].keys())
     for i, job_key in enumerate(job_keys):
         if i < len(action_paths):
@@ -441,7 +471,7 @@ def convert_jenkins_to_gha(jenkins_text: str, output_dir: Path = Path(".")) -> T
                 if action_info.get("approval_environment"):
                     job["environment"] = action_info["approval_environment"]
                 
-                # Update steps to use enhanced composite action
+                # Update steps to use enhanced composite action with secrets
                 job["steps"] = create_enhanced_job_steps(action_info)
                 
                 # Add continue-on-error for non-critical jobs with manual conversion needs
