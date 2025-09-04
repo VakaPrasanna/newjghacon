@@ -16,9 +16,11 @@ runs:
       SONAR_TOKEN: ${{ inputs.sonar-token }}
       SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
     with:
-      projectKey: j2github
-      projectName: j2github
-  - name: Run SonarQube analysis
-    run: mvn admin:Adminsonar@12345  -Dsonar.projectKey=j2github  -Dsonar.projectName=j2github  -Dsonar.projectVersion=${{ github.run_number }}
-    shell: bash
+      # projectKey: j2github
+      # projectName: j2github
+     projectBaseDir:
+     args:>
+      -Dsonar.projectKey=j2github  
+      -Dsonar.projectName=j2github  
+      -Dsonar.projectVersion=${{ github.run_number }}
  
