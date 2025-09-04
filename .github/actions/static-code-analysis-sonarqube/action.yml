@@ -19,6 +19,6 @@ runs:
       projectKey: j2github
       projectName: j2github
   - name: Run SonarQube analysis
-    run: mvn sonar:sonar  -Dsonar.projectKey=${params.APP_NAME}  -Dsonar.projectName=${params.APP_NAME}  -Dsonar.projectVersion=${BUILD_TAG}
+    run: mvn admin:Adminsonar@12345  -Dsonar.projectKey=${params.APP_NAME}  -Dsonar.projectName=${params.APP_NAME}  -Dsonar.projectVersion=${BUILD_TAG}
     shell: bash
  
