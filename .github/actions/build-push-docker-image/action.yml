@@ -41,9 +41,9 @@ runs:
   - name: Push Docker image
     run: docker push ${{ inputs.image-name }}:${{ inputs.build-tag }}
     shell: bash
-  - name: Run command 1
-    run: echo "$REGISTRY_CRED_PSW" | docker login ${{ inputs.registry }} -u "$REGISTRY_CRED_USR" --password-stdin
-    shell: bash
-  - name: Run command 2
-    run: echo $REGISTRY_CRED_PSW
-    shell: bash
+  # - name: Run command 1
+  #   run: echo "$REGISTRY_CRED_PSW" | docker login ${{ inputs.registry }} -u "$REGISTRY_CRED_USR" --password-stdin
+  #   shell: bash
+  # - name: Run command 2
+  #   run: echo $REGISTRY_CRED_PSW
+  #   shell: bash
