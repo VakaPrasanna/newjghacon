@@ -127,7 +127,7 @@ jobs:
       timeout-minutes: 30
   manual-approval-for-deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.DEPLOY_ENV in ['stg', 'prd']
+    if: github.event_name == 'workflow_dispatch' && (inputs.DEPLOY_ENV == 'stg' || inputs.DEPLOY_ENV == 'dev' || inputs.DEPLOY_ENV == 'prd') 
     needs: build-push-docker-image
     timeout-minutes: 60
     concurrency:
