@@ -7,7 +7,7 @@ pipeline {
     // ==============================
     tools{
         maven 'maven-3.9'
-        jdk 'jdk-21'
+        jdk 'jdk-17'
     }
     options {
         ansiColor('xterm')
@@ -62,7 +62,7 @@ pipeline {
 
         stage('Set Java & Maven') {
             tools {
-                jdk 'jdk-21'
+                jdk 'jdk-17'
                 maven 'maven-3.9'
             }
             steps {
