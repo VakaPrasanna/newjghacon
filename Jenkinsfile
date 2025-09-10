@@ -5,6 +5,10 @@ pipeline {
     // ==============================
     // Global Options & Triggers
     // ==============================
+    tools{
+        maven 'maven-3.9'
+        jdk 'jdk-21'
+    }
     options {
         ansiColor('xterm')
         timestamps()
@@ -35,9 +39,9 @@ pipeline {
         IMAGE            = "${env.REGISTRY}/${params.APP_NAME}"
         SONARQUBE_SERVER = 'sonarqube-prod'
         REGISTRY_CRED    = credentials('registry-writer')
-        SLACK_CRED       = credentials('slack-webhook')
-        KUBE_CONFIG_DEV  = credentials('kubeconfig-dev')
-        KUBE_CONFIG_PRD  = credentials('kubeconfig-prd')
+        // SLACK_CRED       = credentials('slack-webhook')
+        // KUBE_CONFIG_DEV  = credentials('kubeconfig-dev')
+        // KUBE_CONFIG_PRD  = credentials('kubeconfig-prd')
         MAVEN_OPTS       = '-Dmaven.test.failure.ignore=false -DskipTests'
     }
 
@@ -58,7 +62,7 @@ pipeline {
 
         stage('Set Java & Maven') {
             tools {
-                jdk 'jdk-17'
+                jdk 'jdk-21'
                 maven 'maven-3.9'
             }
             steps {
@@ -161,15 +165,15 @@ pipeline {
         }
         success {
             echo "Pipeline succeeded ✅"
-            slackSend(channel: '#deployments', message: "SUCCESS: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
+            //slackSend(channel: '#deployments', message: "SUCCESS: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
         }
         failure {
             echo "Pipeline failed ❌"
-            slackSend(channel: '#deployments', message: "FAILURE: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
+            //slackSend(channel: '#deployments', message: "FAILURE: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
         }
         unstable {
             echo "Pipeline unstable ⚠️"
-            slackSend(channel: '#deployments', message: "UNSTABLE: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
+            //slackSend(channel: '#deployments', message: "UNSTABLE: ${params.APP_NAME} build ${BUILD_TAG}", webhookUrl: "${SLACK_CRED}")
         }
     }
 }
