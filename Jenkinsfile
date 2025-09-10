@@ -5,10 +5,7 @@ pipeline {
     // ==============================
     // Global Options & Triggers
     // ==============================
-    tools{
-        maven 'maven-3.9'
-        jdk 'jdk-21'
-    }
+ 
     options {
         ansiColor('xterm')
         timestamps()
@@ -61,10 +58,7 @@ pipeline {
         }
 
         stage('Set Java & Maven') {
-            tools {
-                jdk 'jdk-21'
-                maven 'maven-3.9'
-            }
+           
             steps {
                 sh 'java -version && mvn -v'
             }
