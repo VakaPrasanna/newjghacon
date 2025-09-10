@@ -1,51 +1,83 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
+http://maven.apache.org/xsd/maven-4.0.0.xsd">
+ 
     <modelVersion>4.0.0</modelVersion>
-
+ 
     <groupId>com.example</groupId>
-    <artifactId>my-java-app</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-
+<artifactId>my-java-app</artifactId>
+<version>1.0.0</version>
+<packaging>jar</packaging>
+ 
     <name>my-java-app</name>
-
+ 
     <properties>
-        <!-- Use Java 21 -->
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
+<!-- Use Java 21 -->
+<maven.compiler.source>21</maven.compiler.source>
+<maven.compiler.target>21</maven.compiler.target>
+<maven.compiler.release>21</maven.compiler.release>
+<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+</properties>
+ 
     <dependencies>
+<!-- Spring Boot Starter Web for web applications -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+ 
+        <!-- Spring Boot Starter (for general functionality) -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter</artifactId>
+</dependency>
+ 
         <!-- Example: JUnit for testing -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.10.0</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
+<dependency>
+<groupId>org.junit.jupiter</groupId>
+<artifactId>junit-jupiter</artifactId>
+<version>5.10.0</version>
+<scope>test</scope>
+</dependency>
+</dependencies>
+ 
+    <dependencyManagement>
+<dependencies>
+<!-- Spring Boot Dependency Management -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-dependencies</artifactId>
+<version>2.8.6</version> <!-- Adjust version as needed -->
+<scope>import</scope>
+<type>pom</type>
+</dependency>
+</dependencies>
+</dependencyManagement>
+ 
     <build>
-        <plugins>
-            <!-- Compiler Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.12.1</version>
-            </plugin>
-
-            <!-- Surefire Plugin (for tests) -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0</version>
-            </plugin>
-        </plugins>
-    </build>
-
+<plugins>
+<!-- Compiler Plugin -->
+<plugin>
+<groupId>org.apache.maven.plugins</groupId>
+<artifactId>maven-compiler-plugin</artifactId>
+<version>3.12.1</version>
+</plugin>
+ 
+            <!-- Spring Boot Maven Plugin for packaging & running the app -->
+<plugin>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-maven-plugin</artifactId>
+<version>2.8.6</version> <!-- Match version with dependencies -->
+</plugin>
+ 
+            <!-- Surefire Plugin for running tests -->
+<plugin>
+<groupId>org.apache.maven.plugins</groupId>
+<artifactId>maven-surefire-plugin</artifactId>
+<version>3.0.0</version>
+</plugin>
+</plugins>
+</build>
+ 
 </project>
