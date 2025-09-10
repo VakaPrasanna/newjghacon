@@ -72,7 +72,7 @@ pipeline {
 
         stage('Build & Unit Test') {
             steps {
-                sh 'mvn clean package -DskipITs=false'
+                sh 'mvn clean install -U'
             }
             post {
                 always {
