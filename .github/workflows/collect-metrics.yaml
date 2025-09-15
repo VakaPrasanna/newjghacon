@@ -1,0 +1,156 @@
+# Save this as .github/workflows/collect-metrics.yml
+name: Collect Workflow Metrics
+
+on:
+  workflow_call:
+    inputs:
+      workflow-name:
+        description: 'Name of the calling workflow'
+        required: false
+        type: string
+        default: 'Unknown Workflow'
+    secrets:
+      github-token:
+        description: 'GitHub token for API access'
+        required: false
+
+jobs:
+  collect-metrics:
+    name: Collect Complete Workflow Metrics
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Collect Workflow Metrics
+      env:
+        GITHUB_TOKEN: ${{ secrets.github-token || github.token }}
+      run: |
+        # Create metrics directory
+        mkdir -p metrics
+        
+        # Get current timestamp
+        CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+        
+        # Get workflow run details via GitHub API
+        echo "🔍 Fetching workflow run details for: ${{ inputs.workflow-name }}"
+        WORKFLOW_DATA=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+        
+        # Get jobs data
+        echo "🔍 Fetching all jobs details..."
+        JOBS_DATA=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+        
+        # Extract workflow information
+        WORKFLOW_STATUS=$(echo "$WORKFLOW_DATA" | jq -r '.conclusion // .status')
+        WORKFLOW_START_TIME=$(echo "$WORKFLOW_DATA" | jq -r '.run_started_at')
+        WORKFLOW_END_TIME=$(echo "$WORKFLOW_DATA" | jq -r '.updated_at')
+        
+        # Calculate total duration
+        if [ "$WORKFLOW_START_TIME" != "null" ] && [ "$WORKFLOW_END_TIME" != "null" ]; then
+          START_EPOCH=$(date -d "$WORKFLOW_START_TIME" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$WORKFLOW_START_TIME" +%s 2>/dev/null)
+          END_EPOCH=$(date -d "$WORKFLOW_END_TIME" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$WORKFLOW_END_TIME" +%s 2>/dev/null)
+          DURATION=$((END_EPOCH - START_EPOCH))
+        else
+          DURATION=0
+        fi
+        
+        # Create comprehensive metrics JSON
+        cat > metrics/workflow_metrics.json << EOF
+        {
+          "data": {
+            "workflow_name": "${{ inputs.workflow-name }}",
+            "run_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}",
+            "repository": "${{ github.repository }}",
+            "ref": "${{ github.ref }}",
+            "sha": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "event_name": "${{ github.event_name }}",
+            "start_time": "$WORKFLOW_START_TIME",
+            "end_time": "$WORKFLOW_END_TIME", 
+            "duration_seconds": $DURATION,
+            "status": "$WORKFLOW_STATUS"
+          },
+          "environment": {
+            "runner_os": "${{ runner.os }}",
+            "runner_arch": "${{ runner.arch }}",
+            "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          },
+          "jobs_summary": {
+            "total_jobs": $(echo "$JOBS_DATA" | jq '.total_count'),
+            "successful_jobs": $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "success")] | length'),
+            "failed_jobs": $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "failure")] | length'),
+            "cancelled_jobs": $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "cancelled")] | length')
+          },
+          "jobs_details": $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.name != "Collect Complete Workflow Metrics") | {
+            name: .name,
+            status: .status,
+            conclusion: .conclusion,
+            started_at: .started_at,
+            completed_at: .completed_at,
+            duration_seconds: (if .started_at and .completed_at then 
+              (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601))) 
+              else null end),
+            steps_count: (.steps | length)
+          }]'),
+          "metadata": {
+            "collected_at": "$CURRENT_TIME",
+            "collector": "reusable-workflow"
+          }
+        }
+        EOF
+        
+        # Display comprehensive summary
+        echo ""
+        echo "🎯 COMPLETE WORKFLOW ANALYSIS"
+        echo "=============================="
+        echo "Workflow: ${{ inputs.workflow-name }}"
+        echo "Repository: ${{ github.repository }}"
+        echo "Run: #${{ github.run_number }} (ID: ${{ github.run_id }})"
+        echo "Triggered by: ${{ github.actor }} via ${{ github.event_name }}"
+        echo "Branch: ${{ github.ref }}"
+        echo "Status: $WORKFLOW_STATUS"
+        echo "Total Duration: ${DURATION}s"
+        echo ""
+        
+        # Show jobs summary
+        echo "📋 JOBS SUMMARY:"
+        echo "================"
+        echo "Total Jobs: $(echo "$JOBS_DATA" | jq -r '.total_count')"
+        echo "✅ Successful: $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "success")] | length')"
+        echo "❌ Failed: $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "failure")] | length')"
+        echo "🚫 Cancelled: $(echo "$JOBS_DATA" | jq '[.jobs[] | select(.conclusion == "cancelled")] | length')"
+        echo ""
+        
+        # Show individual job details
+        echo "🔍 INDIVIDUAL JOB DETAILS:"
+        echo "=========================="
+        echo "$JOBS_DATA" | jq -r '.jobs[] | select(.name != "Collect Complete Workflow Metrics") | "Job: \(.name)\n  Status: \(.conclusion // .status)\n  Duration: \(if .started_at and .completed_at then (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)) | tostring) + "s" else "N/A" end)\n  Steps: \(.steps | length)\n"'
+        
+        # Pretty print full JSON
+        echo "📊 COMPLETE METRICS DATA:"
+        echo "========================="
+        cat metrics/workflow_metrics.json | jq .
+
+    - name: Upload Workflow Metrics
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: complete-workflow-metrics-${{ github.run_id }}
+        path: metrics/
+        retention-days: 90
+
+    - name: Metrics Collection Summary
+      if: always()
+      run: |
+        echo "::notice title=Workflow Analysis Complete::Complete workflow metrics collected for ${{ inputs.workflow-name }}"
+        echo "::group::📊 Collection Summary"
+        echo "✅ Workflow execution data captured"
+        echo "✅ All job statuses and timings recorded"
+        echo "✅ Performance metrics calculated"
+        echo "✅ Data stored for 90 days"
+        echo "🔗 Workflow URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        echo "::endgroup::"
+This paste expires in <1 hour. Public IP access. Share whatever you see with others in seconds with Context.Terms of ServiceReport this
