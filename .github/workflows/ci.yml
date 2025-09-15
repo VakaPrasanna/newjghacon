@@ -159,7 +159,8 @@ jobs:
     - name: Run Smoke Test
       uses: ./.github/actions/smoke-test
   metrics:
-    uses: ./.github/workflows/collect-metrics.yml
+    name: Collect Metrics
+    runs-on: ubuntu-latest
     needs: 
     - checkout
     - set-java-maven
@@ -172,8 +173,9 @@ jobs:
     # - deploy-to-kubernetes
     - smoke-test
     if: always()
-    with:
-      workflow-name: ${{github.workflow}}
+    steps: 
+    - name: collect workflow metrics
+      uses: ./.github/actions/simple-metrics
   pipeline-post:
     name: Pipeline Post Actions
     runs-on: ubuntu-latest
