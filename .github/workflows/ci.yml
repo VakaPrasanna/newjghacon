@@ -158,6 +158,22 @@ jobs:
     - uses: actions/checkout@v4
     - name: Run Smoke Test
       uses: ./.github/actions/smoke-test
+  metrics:
+    uses: ./.github/workflows/collect-metrics.yml
+    needs: 
+    - checkout
+    - set-java-maven
+    - build-unit-test
+    # - static-code-analysis-sonarqube
+    - quality-gate
+    - security-scans
+    # - build-push-docker-image
+    - manual-approval-for-deploy
+    # - deploy-to-kubernetes
+    - smoke-test
+    if: always()
+    with:
+      workflow-name: ${{github.workflow}}
   pipeline-post:
     name: Pipeline Post Actions
     runs-on: ubuntu-latest
